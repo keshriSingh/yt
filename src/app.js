@@ -18,5 +18,11 @@ app.use(express.static('public'));
 app.use(cookieParser());
 
 
+//import routes
+const userRouter = require('./routes/userRoute');
+
+
+app.use('/user',userRouter)
+
 
 module.exports = {app}
