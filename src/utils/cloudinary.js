@@ -10,14 +10,14 @@ v2.config({
 const uploadOnCloudinary = async (localFilePath)=>{
     try {
         if(!localFilePath)return null
-        const response = v2.uploader.upload(localFilePath,{
+        const response = await v2.uploader.upload(localFilePath,{
             resource_type:'auto'
         })
-        console.log('file has been uploaded succesfully',response.url)
+        // console.log('file has been uploaded succesfully',response?.url)
+        fs.unlinkSync(localFilePath)
         return response;
     } catch (error) {
         fs.unlinkSync(localFilePath)
-
         return null;
     }
 }

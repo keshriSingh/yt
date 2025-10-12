@@ -22,8 +22,8 @@ const register = async (req,res)=>{
             throw new Error("User allready existed")
         }
 
-        const avatarLocalPath = req.files?.avatar[0].path;
-        const coverImageLocalPath = req.files?.coverImage[0].path;
+        const avatarLocalPath = req.files?.avatar?.[0].path;
+        const coverImageLocalPath = req.files?.coverImage?.[0].path;
 
         if(!avatarLocalPath){
             throw new Error("Avtar file is required")
@@ -58,7 +58,7 @@ const register = async (req,res)=>{
 
 
     } catch (error) {
-        res.status(500).send('error:'+error);
+        res.status(500).send(''+error);
     }
 }
 
