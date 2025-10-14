@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
+const jwt = require('jsonwebtoken')
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
@@ -152,4 +153,44 @@ const logout = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout };
+const refreshAccessToken = async (req,res)=>{
+  const incomingRefreshToken = req.cookies.refreshToken
+  if(!incomingRefreshToken){
+    throw new Error("Invalid Token")
+  }
+
+  try {
+    
+    const payload = jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+    if(!payload){
+      throw new Error("Invalid Refresh Token")
+    }
+
+    const user = await User.findById(payload._id)
+    if(!user){
+      throw new Error("Invalid Refresh Token")
+    }
+
+    if(user.refreshToken.toString() !== incomingRefreshToken.toString()){
+      throw new Error('Refresh token is expired or used')
+    }
+
+    const {accessToken,refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+
+    const options = {
+      httpOnly:true,
+      secure:true
+    }
+
+    res.status(200).cookie('accessToken',accessToken,options).cookie('refreshToken',refreshToken,options).json({
+      data:"Access Token refreshed"
+    })
+
+  } catch (error) {
+    res.status(500).send("" + error);
+  }
+
+
+}
+
+module.exports = { register, login, logout, refreshAccessToken };
