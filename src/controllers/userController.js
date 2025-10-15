@@ -1,5 +1,5 @@
 const User = require("../models/userModel");
-const { uploadOnCloudinary } = require("../utils/cloudinary");
+const { uploadOnCloudinary, deleteFromCloudinary } = require("../utils/cloudinary");
 const jwt = require('jsonwebtoken')
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
@@ -265,11 +265,12 @@ const updateAccountDetails = async(req,res)=>{
 
 const updateUserAvatar = async(req,res)=>{
   try {
-
     const avatarLocalPath = req.file?.path;
     if(!avatarLocalPath){
       throw new Error("Avatar file is missing")
     }
+
+    const deletedImageFormCloudinary = req.user?.avatar;
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     if(!avatar.url){
@@ -285,6 +286,8 @@ const updateUserAvatar = async(req,res)=>{
       },
       {new:true}
     ).select('-password -refreshToken')
+
+    await deleteFromCloudinary(deletedImageFormCloudinary);
 
     res.status(200).json({
       data:user
@@ -302,6 +305,8 @@ const updateUserCoverImage = async (req,res)=>{
       throw new Error("CoverImage file is missing")
     }
 
+    const deletedImageFormCloudinary = req.user?.coverImage
+    
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
     if(!coverImage.url){
       throw new Error("Error Occured While Uploading Cover Image")
@@ -317,6 +322,7 @@ const updateUserCoverImage = async (req,res)=>{
       {new:true}
     ).select('-password -refreshToken')
 
+    await deleteFromCloudinary(deletedImageFormCloudinary);
     res.status(200).send({
       data:user
     })
