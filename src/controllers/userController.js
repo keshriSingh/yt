@@ -85,7 +85,7 @@ const login = async (req, res) => {
   try {
     const { userName, email, password } = req.body;
 
-    if (!userName.trim() && !email.trim()) {
+    if (!userName?.trim() && !email?.trim()) {
       throw new Error("Invalid credentials");
     }
     if (!password) {
@@ -332,4 +332,82 @@ const updateUserCoverImage = async (req,res)=>{
   }
 }
 
-module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserAvatar, updateUserCoverImage };
+const userChannelProfile = async(req,res)=>{
+  try {
+
+    console.log(req.params)
+    const {username} = req.params;
+
+    if(!username?.trim()){
+      throw new Error("userName is missing")
+    }
+
+    const channel = await User.aggregate([
+      {
+        $match:{
+          userName:username.toLowerCase()
+        }
+      },
+      {
+        $lookup:{
+          from:"subscriptions",
+          localField:"_id",
+          foreignField:"channel",
+          as:"subscribers"
+        }
+      },
+      {
+        $lookup:{
+          from:'subscriptions',
+          localField:"_id",
+          foreignField:"subscriber",
+          as:"subscribedTo"
+        }
+      },
+      {
+        $addFields:{
+          subscribersCount:{
+            $size:"$subscribers"
+          },
+          channelsSubscribedToCount:{
+            $size:"$subscribedTo"
+          },
+          isSubscribed:{
+            $cond:{
+              if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+              then:true,
+              else:false
+            }
+          }
+        }
+      },
+      {
+        $project:{
+          userName:1,
+          fullName:1,
+          email:1,
+          avatar:1,
+          coverImage:1,
+          subscribersCount:1,
+          channelsSubscribedToCount:1,
+          isSubscribed:1,
+        }
+      }
+
+    ])
+
+    if(!channel.length){
+      throw new Error("channel does not exists")
+    }
+    console.log(channel)
+
+    res.status(200).json({
+      data:channel[0]
+    })
+
+  } catch (error) {
+    res.status(500).send(""+error)
+  }
+}
+
+module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserAvatar, updateUserCoverImage, userChannelProfile };
