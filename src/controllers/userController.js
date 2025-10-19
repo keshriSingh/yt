@@ -133,8 +133,8 @@ const logout = async (req, res) => {
   try {
     await User.findByIdAndUpdate(req.user._id,
         {
-           $set: {
-             refreshToken:""
+           $unset: {
+             refreshToken:1
            }
         },
         {
