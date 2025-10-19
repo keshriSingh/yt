@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const User = require("../models/userModel");
 const { uploadOnCloudinary, deleteFromCloudinary } = require("../utils/cloudinary");
 const jwt = require('jsonwebtoken')
@@ -410,4 +411,58 @@ const userChannelProfile = async(req,res)=>{
   }
 }
 
-module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserAvatar, updateUserCoverImage, userChannelProfile };
+const getWatchHistory = async (req,res)=>{
+  try {
+    
+    const user = await User.aggregate([
+      {
+        $match:{
+          _id: new mongoose.Types.ObjectId(req.user._id)
+        }
+      },
+      {
+        $lookup:{
+          from:"videos",
+          localField:"watchHistory",
+          foreignField:"_id",
+          as:"watchHistory",
+          pipeline:[
+            {
+              $lookup:{
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"owner",
+                pipeline:[
+                  {
+                    $project:{
+                      fullName:1,
+                      userName:1,
+                      avatar:1
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              $addFields:{
+                owner:{
+                  $first:"$owner"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ])
+
+    res.status(200).json({
+      data:user[0].watchHistory
+    })
+
+  } catch (error) {
+    res.status(500).send(""+error)
+  }
+}
+
+module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserAvatar, updateUserCoverImage, userChannelProfile,getWatchHistory };
