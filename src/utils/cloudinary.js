@@ -58,4 +58,40 @@ const deleteFromCloudinary = async (deleteFile) => {
   }
 };
 
-module.exports = { uploadOnCloudinary, deleteFromCloudinary };
+const deleteVideoFromCloudinary = async (deleteFile) => {
+  try {
+    const getPublicIdFromUrl = (url) => {
+      // Improved regex to handle different Cloudinary URL formats
+      const matches = url.match(/\/upload\/(?:v\d+\/)?([^\.]+)/);
+      return matches ? matches[1] : null;
+    };
+
+    const publicId = getPublicIdFromUrl(deleteFile);
+
+    if (!publicId) {
+      throw new Error("Invalid Cloudinary URL: " + deleteFile);
+    }
+
+    console.log("Deleting file with public ID:", publicId);
+
+    const result = await v2.uploader.destroy(publicId, {
+      resource_type: "video",
+    });
+
+    console.log("Cloudinary delete result:", result);
+
+    // if (result.result === "ok") {
+    //   console.log("Successfully deleted from Cloudinary");
+    //   return result;
+    // } else {
+    //   console.log("Delete failed:", result);
+    //   throw new Error("Delete operation failed: " + result.result);
+    // }
+  } catch (error) {
+    // FIXED: Added proper error handling
+    console.error("Error deleting from Cloudinary:", error.message);
+    throw error; // Re-throw the error
+  }
+};
+
+module.exports = { uploadOnCloudinary, deleteFromCloudinary, deleteVideoFromCloudinary };

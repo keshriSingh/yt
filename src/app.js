@@ -20,9 +20,10 @@ app.use(cookieParser());
 
 //import routes
 const userRouter = require('./routes/userRoute');
+const videoRouter = require('./routes/videoRoute');
 
 
 app.use('/user',userRouter)
-
+app.use('/video',videoRouter)
 
 module.exports = {app}
