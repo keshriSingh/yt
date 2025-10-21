@@ -1,6 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middlewares/authMiddleware');
-const { getAllVideo, publishAVideo, getVideoById, updateVideo } = require('../controllers/videoController');
+const { getAllVideo, publishAVideo, getVideoById, updateVideo, deleteVideo, togglePublishStatus } = require('../controllers/videoController');
 const { upload } = require('../middlewares/multerMiddleware');
 
 const videoRouter = express.Router();
@@ -27,5 +27,7 @@ videoRouter.patch("/:videoId",authMiddleware,upload.fields([
         maxCount:1
     }
 ]),updateVideo)
+videoRouter.delete("/:videoId",authMiddleware,deleteVideo)
+videoRouter.patch("/toggle/:videoId",authMiddleware,togglePublishStatus)
 
 module.exports = videoRouter

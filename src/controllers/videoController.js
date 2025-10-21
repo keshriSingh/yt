@@ -132,5 +132,53 @@ const updateVideo = async(req,res)=>{
     }
 }
 
+const deleteVideo = async(req,res)=>{
+    try {
+        const {videoId} = req.params;
+        const video = await Video.findById(videoId)
+        if(!video){
+            throw new Error("Video does not exist")
+        }
+        if(video.owner.toString()!==req.user._id.toString()){
+            throw new Error("You can not delete this video")
+        }
+        await deleteVideoFromCloudinary(video.videoFile)
+        await deleteFromCloudinary(video.thumbnail)
 
-module.exports = { getAllVideo,publishAVideo,getVideoById,updateVideo }
+        const deletedVideo = await Video.deleteOne({_id:videoId})
+
+        res.status(200).json({
+            data:deletedVideo
+        })
+
+    } catch (error) {
+        res.status(500).send(""+error)
+    }
+}
+
+const togglePublishStatus = async(req,res)=>{
+    try {
+        const {videoId} = req.params
+        if(!videoId){
+            throw new Error("video does not exist")
+        }
+        const video = await Video.findById(videoId)
+        if(!video){
+            throw new Error("video does not exist")
+        }
+        if(video.owner.toString()!==req.user._id.toString()){
+            throw new Error("You can not delete this video")
+        }
+
+        video.isPublished = !video.isPublished
+        await video.save({validateBeforeSave:false});
+        res.status(200).json({
+            data:video
+        })
+
+    } catch (error) {
+        res.status(500).send(""+error)
+    }
+}
+
+module.exports = { getAllVideo,publishAVideo,getVideoById,updateVideo,deleteVideo,togglePublishStatus }
