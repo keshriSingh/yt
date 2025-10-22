@@ -23,11 +23,13 @@ const userRouter = require('./routes/userRoute');
 const videoRouter = require('./routes/videoRoute');
 const commentRouter = require('./routes/commentRoute');
 const tweetRouter = require('./routes/tweetRoute');
+const subscriptionRouter = require('./routes/subscriptionRoute');
 
 
 app.use('/user',userRouter)
 app.use('/video',videoRouter)
 app.use('/comment',commentRouter)
 app.use('/tweet',tweetRouter)
+app.use('/subscription',subscriptionRouter)
 
 module.exports = {app}
