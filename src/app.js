@@ -22,10 +22,12 @@ app.use(cookieParser());
 const userRouter = require('./routes/userRoute');
 const videoRouter = require('./routes/videoRoute');
 const commentRouter = require('./routes/commentRoute');
+const tweetRouter = require('./routes/tweetRoute');
 
 
 app.use('/user',userRouter)
 app.use('/video',videoRouter)
 app.use('/comment',commentRouter)
+app.use('/tweet',tweetRouter)
 
 module.exports = {app}
