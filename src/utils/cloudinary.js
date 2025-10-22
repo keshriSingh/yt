@@ -72,13 +72,9 @@ const deleteVideoFromCloudinary = async (deleteFile) => {
       throw new Error("Invalid Cloudinary URL: " + deleteFile);
     }
 
-    console.log("Deleting file with public ID:", publicId);
-
     const result = await v2.uploader.destroy(publicId, {
       resource_type: "video",
     });
-
-    console.log("Cloudinary delete result:", result);
 
     // if (result.result === "ok") {
     //   console.log("Successfully deleted from Cloudinary");

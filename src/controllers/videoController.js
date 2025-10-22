@@ -4,7 +4,45 @@ const { uploadOnCloudinary, deleteFromCloudinary, deleteVideoFromCloudinary } = 
 
 const getAllVideo = async(req,res)=>{
     try {
+        const { page = 1, limit = 10, query, sortBy = 'createdAt', sortType = 'desc', userId } = req.query
+
+        const pageNum = parseInt(page)
+        const limitNum = parseInt(limit)
+        const skip = (pageNum-1)*limitNum
+
+        const searchConditions = {}
+
+        if(query){
+            searchConditions.$or = [
+                {title:{ $regex:query, $options:"i" }},
+                {description:{ $regex:query, $options:"i"}}
+            ]
+        }
+
+        if (userId) {
+            searchConditions.owner = userId;
+        }
+
+        searchConditions.isPublished = true
+
+        const sortOrder = {};
+        sortOrder[sortBy] = sortType === 'asc' ? 1 : -1
+
+        const video = await Video.find(searchConditions)
+        .sort(sortOrder)
+        .skip(skip)
+        .limit(limitNum)
         
+
+        if(!video.length){
+            return res.status(200).json({
+                message:"Video not found"
+            })
+        }
+        
+        res.status(200).json({
+            data:video
+        })
     } catch (error) {
         res.status(500).send(""+error)
     }
