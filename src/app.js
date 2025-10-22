@@ -21,9 +21,11 @@ app.use(cookieParser());
 //import routes
 const userRouter = require('./routes/userRoute');
 const videoRouter = require('./routes/videoRoute');
+const commentRouter = require('./routes/commentRoute');
 
 
 app.use('/user',userRouter)
 app.use('/video',videoRouter)
+app.use('/comment',commentRouter)
 
 module.exports = {app}

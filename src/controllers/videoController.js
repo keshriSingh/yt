@@ -1,3 +1,4 @@
+const Comment = require("../models/commentModel");
 const Video = require("../models/videoModel");
 const { uploadOnCloudinary, deleteFromCloudinary, deleteVideoFromCloudinary } = require("../utils/cloudinary");
 
@@ -41,6 +42,7 @@ const getAllVideo = async(req,res)=>{
         }
         
         res.status(200).json({
+            message:"successful",
             data:video
         })
     } catch (error) {
@@ -183,6 +185,7 @@ const deleteVideo = async(req,res)=>{
         await deleteVideoFromCloudinary(video.videoFile)
         await deleteFromCloudinary(video.thumbnail)
 
+        await Comment.findByIdAndDelete({video:videoId})
         const deletedVideo = await Video.deleteOne({_id:videoId})
 
         res.status(200).json({

@@ -335,8 +335,7 @@ const updateUserCoverImage = async (req,res)=>{
 
 const userChannelProfile = async(req,res)=>{
   try {
-
-    console.log(req.params)
+    
     const {username} = req.params;
 
     if(!username?.trim()){
