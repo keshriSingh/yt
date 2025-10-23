@@ -25,6 +25,7 @@ const commentRouter = require('./routes/commentRoute');
 const tweetRouter = require('./routes/tweetRoute');
 const subscriptionRouter = require('./routes/subscriptionRoute');
 const likeRouter = require('./routes/likeRoute');
+const playlistRoute = require('./routes/playlistRoute');
 
 
 app.use('/user',userRouter)
@@ -33,5 +34,6 @@ app.use('/comment',commentRouter)
 app.use('/tweet',tweetRouter)
 app.use('/subscription',subscriptionRouter)
 app.use('/like',likeRouter)
+app.use('/playlist',playlistRoute)
 
 module.exports = {app}
