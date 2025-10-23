@@ -24,6 +24,7 @@ const videoRouter = require('./routes/videoRoute');
 const commentRouter = require('./routes/commentRoute');
 const tweetRouter = require('./routes/tweetRoute');
 const subscriptionRouter = require('./routes/subscriptionRoute');
+const likeRouter = require('./routes/likeRoute');
 
 
 app.use('/user',userRouter)
@@ -31,5 +32,6 @@ app.use('/video',videoRouter)
 app.use('/comment',commentRouter)
 app.use('/tweet',tweetRouter)
 app.use('/subscription',subscriptionRouter)
+app.use('/like',likeRouter)
 
 module.exports = {app}
