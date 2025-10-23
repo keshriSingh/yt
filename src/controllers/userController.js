@@ -14,7 +14,7 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
     return { accessToken, refreshToken };
   } catch (error) {
-    return res.status(500).send("Something went wrong");
+    throw new Error("Token generation failed: " + error.message);
   }
 };
 
@@ -464,4 +464,4 @@ const getWatchHistory = async (req,res)=>{
   }
 }
 
-module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserAvatar, updateUserCoverImage, userChannelProfile,getWatchHistory };
+module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, userChannelProfile,getWatchHistory };

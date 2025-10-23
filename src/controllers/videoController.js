@@ -98,7 +98,10 @@ const publishAVideo = async(req,res)=>{
 const getVideoById = async(req,res)=>{
     try {
         const {videoId} = req.params;
-        const video = await Video.findById(videoId)
+        const video = await Video.findById(videoId).populate(
+        'owner',
+        'userName fullName avatar'
+        );
         if(!video){
             throw new Error("Video does not exist")
         }
