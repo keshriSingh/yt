@@ -105,6 +105,10 @@ const getVideoById = async(req,res)=>{
         if(!video){
             throw new Error("Video does not exist")
         }
+
+        video.views += 1;
+        await video.save({ validateBeforeSave: false });
+
         res.status(200).json({
             data:video
         })
