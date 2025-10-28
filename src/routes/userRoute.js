@@ -29,6 +29,15 @@ userRouter.patch('/editAvatar',authMiddleware,upload.single("avatar"),updateUser
 userRouter.patch('/editCoverImage',authMiddleware,upload.single("coverImage"),updateUserCoverImage)
 userRouter.get('/getChannel/:username',authMiddleware,userChannelProfile)
 userRouter.get('/watchHistory',authMiddleware,getWatchHistory)
+userRouter.get('/check',authMiddleware,async(req,res)=>{
+    try {
+        res.status(200).json({
+            data:req.user
+        })
+    } catch (error) {
+        res.status(500).send(""+error)
+    }
+})
 
 
 module.exports = userRouter;

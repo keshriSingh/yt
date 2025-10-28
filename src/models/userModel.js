@@ -26,7 +26,7 @@ const userSchema = new Schema({
     },
     avatar:{
         type:String,
-        required:true,
+        default:"https://res.cloudinary.com/dqad4vkza/image/upload/v1761452924/icon-7797704_640_rvy6h3.png",
     },
     coverImage:{
         type:String,

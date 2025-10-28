@@ -45,22 +45,15 @@ const register = async (req, res) => {
     const avatarLocalPath = req.files?.avatar?.[0].path;
     const coverImageLocalPath = req.files?.coverImage?.[0].path;
 
-    if (!avatarLocalPath) {
-      throw new Error("Avtar file is required");
-    }
-
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    if (!avatar) {
-      throw new Error("avatar file is required");
-    }
 
     const user = await User.create({
       fullName,
-      avatar: avatar.url,
+      avatar: avatar?.url,
       coverImage: coverImage?.url || "",
-      userName: userName.toLowerCase(),
+      userName: userName?.toLowerCase(),
       password,
       email,
     });

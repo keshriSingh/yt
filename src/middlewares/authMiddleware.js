@@ -3,7 +3,6 @@ const User = require('../models/userModel');
 
 const authMiddleware = async (req,res,next)=>{
     try {
-
         const token = req.cookies?.accessToken;
         if(!token){
             throw new Error("Invalid token")
