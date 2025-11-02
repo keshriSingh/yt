@@ -60,7 +60,7 @@ const getUserChannelSubscribers = async(req,res)=>{
 
 const getSubscribedChannels = async(req,res)=>{
     try {
-        const channels =  await Subscription.find({subscriber:req.user._id}).populate("channel","userName avatar email").select("channel")
+        const channels =  await Subscription.find({subscriber:req.user._id}).populate("channel","fullName avatar ").select("channel")
         if(!channels.length){
             return res.status(200).json({
                 message:"no channel subscribed"

@@ -1,4 +1,6 @@
 const Comment = require("../models/commentModel");
+const Like = require("../models/likeModel");
+const Subscription = require("../models/subscriptionModel");
 const Video = require("../models/videoModel");
 const { uploadOnCloudinary, deleteFromCloudinary, deleteVideoFromCloudinary } = require("../utils/cloudinary");
 
@@ -33,6 +35,7 @@ const getAllVideo = async(req,res)=>{
         .sort(sortOrder)
         .skip(skip)
         .limit(limitNum)
+        .populate("owner","avatar fullName")
         
 
         if(!video.length){
@@ -106,10 +109,28 @@ const getVideoById = async(req,res)=>{
             throw new Error("Video does not exist")
         }
 
-        video.views += 1;
+        const totalSubscribers = await Subscription.countDocuments({channel:video.owner._id})
+
+        const isSubscribed = await Subscription.findOne({channel:video.owner._id},{subscriber:req.user._id})
+        // video.views++;
+
+        const totalLikes = await Like.countDocuments({ 
+        video: videoId, 
+        likedBy: { $exists: true } 
+        });
+
+        const isLiked = await Like.findOne({video:videoId},{likedBy:req.user._id})
+
+        req.user.watchHistory.push(videoId)
+        await req.user.save()
+    
         await video.save({ validateBeforeSave: false });
 
         res.status(200).json({
+            isSubscribed:isSubscribed?true:false,
+            isLiked:isLiked?true:false,
+            totalSubscribers,
+            totalLikes,
             data:video
         })
     } catch (error) {

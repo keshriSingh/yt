@@ -326,83 +326,122 @@ const updateUserCoverImage = async (req,res)=>{
   }
 }
 
-const userChannelProfile = async(req,res)=>{
+const userChannelProfile = async (req, res) => {
   try {
-    
-    const {username} = req.params;
+    const { userId } = req.params;
 
-    if(!username?.trim()){
-      throw new Error("userName is missing")
+    if (!userId) {
+      throw new Error("userId is missing")
     }
 
     const channel = await User.aggregate([
       {
-        $match:{
-          userName:username.toLowerCase()
+        $match: {
+          _id: new mongoose.Types.ObjectId(userId)
         }
       },
       {
-        $lookup:{
-          from:"subscriptions",
-          localField:"_id",
-          foreignField:"channel",
-          as:"subscribers"
+        $lookup: {
+          from: "subscriptions",
+          localField: "_id",
+          foreignField: "channel",
+          as: "subscribers"
         }
       },
       {
-        $lookup:{
-          from:'subscriptions',
-          localField:"_id",
-          foreignField:"subscriber",
-          as:"subscribedTo"
+        $lookup: {
+          from: 'subscriptions',
+          localField: "_id",
+          foreignField: "subscriber",
+          as: "subscribedTo"
         }
       },
       {
-        $addFields:{
-          subscribersCount:{
-            $size:"$subscribers"
-          },
-          channelsSubscribedToCount:{
-            $size:"$subscribedTo"
-          },
-          isSubscribed:{
-            $cond:{
-              if:{$in:[req.user?._id,"$subscribers.subscriber"]},
-              then:true,
-              else:false
+        $lookup: {
+          from: "videos",
+          localField: "_id",
+          foreignField: "owner",
+          as: "videos",
+          pipeline: [
+            {
+              $match: {
+                isPublished: true // Only include published videos
+              }
+            },
+            {
+              $sort: {
+                createdAt: -1 // Sort by latest videos first
+              }
+            },
+            {
+              $project: {
+                videoFile: 1,
+                thumbnail: 1,
+                title: 1,
+                description: 1,
+                duration: 1,
+                views: 1,
+                isPublished: 1,
+                createdAt: 1,
+                updatedAt: 1
+              }
             }
+          ]
+        }
+      },
+      {
+        $addFields: {
+          subscribersCount: {
+            $size: "$subscribers"
+          },
+          channelsSubscribedToCount: {
+            $size: "$subscribedTo"
+          },
+          isSubscribed: {
+            $cond: {
+              if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+              then: true,
+              else: false
+            }
+          },
+          videosCount: {
+            $size: "$videos"
+          },
+          totalViews: {
+            $sum: "$videos.views"
           }
         }
       },
       {
-        $project:{
-          userName:1,
-          fullName:1,
-          email:1,
-          avatar:1,
-          coverImage:1,
-          subscribersCount:1,
-          channelsSubscribedToCount:1,
-          isSubscribed:1,
+        $project: {
+          userName: 1,
+          fullName: 1,
+          email: 1,
+          avatar: 1,
+          coverImage: 1,
+          subscribersCount: 1,
+          channelsSubscribedToCount: 1,
+          isSubscribed: 1,
+          videos: 1,
+          videosCount: 1,
+          totalViews: 1,
+          createdAt:1
         }
       }
-
     ])
 
-    if(!channel.length){
+    if (!channel.length) {
       throw new Error("channel does not exists")
     }
-    console.log(channel)
 
     res.status(200).json({
-      data:channel[0]
+      data: channel[0]
     })
 
   } catch (error) {
-    res.status(500).send(""+error)
+    res.status(500).send("" + error)
   }
 }
-
 const getWatchHistory = async (req,res)=>{
   try {
     
