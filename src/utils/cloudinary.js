@@ -44,13 +44,6 @@ const deleteFromCloudinary = async (deleteFile) => {
 
     console.log("Cloudinary delete result:", result);
 
-    // if (result.result === "ok") {
-    //   console.log("Successfully deleted from Cloudinary");
-    //   return result;
-    // } else {
-    //   console.log("Delete failed:", result);
-    //   throw new Error("Delete operation failed: " + result.result);
-    // }
   } catch (error) {
     // FIXED: Added proper error handling
     console.error("Error deleting from Cloudinary:", error.message);

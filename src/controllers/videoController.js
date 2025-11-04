@@ -120,8 +120,11 @@ const getVideoById = async(req,res)=>{
         });
 
         const isLiked = await Like.findOne({video:videoId},{likedBy:req.user._id})
+        
+        if(!(req.user.watchHistory.includes(videoId))){
+            req.user.watchHistory.push(videoId)
+        }
 
-        req.user.watchHistory.push(videoId)
         await req.user.save()
     
         await video.save({ validateBeforeSave: false });

@@ -232,8 +232,8 @@ const getUser = async(req,res)=>{
 const updateAccountDetails = async(req,res)=>{
   try {
 
-    const { fullName,email } = req.body 
-    if(!(fullName && email)){
+    const { fullName,userName } = req.body 
+    if(!(fullName && userName)){
       throw new Error('Field are required')
     }
 
@@ -242,7 +242,7 @@ const updateAccountDetails = async(req,res)=>{
       {
         $set:{
           fullName,
-          email
+          userName
         }
       },
       {new:true}
@@ -334,6 +334,8 @@ const userChannelProfile = async (req, res) => {
       throw new Error("userId is missing")
     }
 
+    const isOwner = req.user?._id.toString() === userId;
+
     const channel = await User.aggregate([
       {
         $match: {
@@ -365,12 +367,17 @@ const userChannelProfile = async (req, res) => {
           pipeline: [
             {
               $match: {
-                isPublished: true // Only include published videos
+                $expr: {
+                  $or: [
+                    { $eq: [isOwner, true] }, // If owner, match all videos
+                    { $eq: ["$isPublished", true] } // If not owner, only published
+                  ]
+                }
               }
             },
             {
               $sort: {
-                createdAt: -1 // Sort by latest videos first
+                createdAt: -1
               }
             },
             {
@@ -399,7 +406,7 @@ const userChannelProfile = async (req, res) => {
           },
           isSubscribed: {
             $cond: {
-              if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+              if: { $in: [new mongoose.Types.ObjectId(req.user?._id), "$subscribers.subscriber"] },
               then: true,
               else: false
             }
@@ -425,7 +432,7 @@ const userChannelProfile = async (req, res) => {
           videos: 1,
           videosCount: 1,
           totalViews: 1,
-          createdAt:1
+          createdAt: 1
         }
       }
     ])
@@ -442,6 +449,7 @@ const userChannelProfile = async (req, res) => {
     res.status(500).send("" + error)
   }
 }
+
 const getWatchHistory = async (req,res)=>{
   try {
     
