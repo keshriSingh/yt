@@ -1,12 +1,15 @@
 const { default: mongoose } = require("mongoose");
 const User = require("../models/userModel");
-const { uploadOnCloudinary, deleteFromCloudinary } = require("../utils/cloudinary");
-const jwt = require('jsonwebtoken')
+const {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} = require("../utils/cloudinary");
+const jwt = require("jsonwebtoken");
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const accessToken =  await user.generateAccessToken();
+    const accessToken = await user.generateAccessToken();
     const refreshToken = await user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
@@ -22,11 +25,7 @@ const register = async (req, res) => {
   try {
     const { userName, fullName, email, password } = req.body;
 
-    if (
-      [userName, fullName, email, password].some(
-        (field) => field?.trim() === ""
-      )
-    ) {
+    if ([userName, fullName, email, password].some(field => field?.trim() === "")) {
       throw new Error("All fields are required");
     }
 
@@ -39,7 +38,7 @@ const register = async (req, res) => {
     });
 
     if (existedUser) {
-      throw new Error("User allready existed");
+      throw new Error("User already exists");
     }
 
     const avatarLocalPath = req.files?.avatar?.[0].path;
@@ -47,7 +46,6 @@ const register = async (req, res) => {
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-
 
     const user = await User.create({
       fullName,
@@ -58,20 +56,32 @@ const register = async (req, res) => {
       email,
     });
 
-    const createdUser = await User.findById(user._id).select(
-      "-password -refreshToken"
-    );
-    if (!createdUser) {
-      return res.status(500).json({
-        message: "Failed to create user",
-      });
-    }
+    // Generate tokens
+    const accessToken = await user.generateAccessToken();
+    const refreshToken = await user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
 
-    res.status(201).json({
-      data: createdUser,
-    });
+    const createdUser = await User.findById(user._id).select("-password -refreshToken");
+
+    // Cookie options (HTTP deployment)
+    const cookieOptions = {
+      httpOnly: true,
+      secure: false,   // because you're running without HTTPS
+      sameSite: "lax",
+    };
+
+    res
+      .status(201)
+      .cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshToken", refreshToken, cookieOptions)
+      .json({
+        message: "User registered successfully",
+        data: createdUser,
+      });
+
   } catch (error) {
-    res.status(500).send("" + error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -99,7 +109,8 @@ const login = async (req, res) => {
       throw new Error("Invalid credentials");
     }
 
-    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+    const { accessToken, refreshToken } =
+      await generateAccessTokenAndRefreshToken(user._id);
 
     const loggedInUser = await User.findById(user._id).select(
       "-password -refreshToken"
@@ -107,7 +118,8 @@ const login = async (req, res) => {
 
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: false, // because you are not using HTTPS yet
+      sameSite: "lax",
     };
 
     res
@@ -124,214 +136,219 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user._id,
-        {
-           $unset: {
-             refreshToken:1
-           }
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $unset: {
+          refreshToken: 1,
         },
-        {
-            new:true
-        }
-    )
+      },
+      {
+        new: true,
+      }
+    );
 
     const options = {
-        httpOnly:true,
-        secure:true,
-    }
+      httpOnly: true,
+      secure: true,
+    };
 
-    return res.status(200).clearCookie('accessToken',options).clearCookie('refreshToken',options).json({data:"Logout succesfully"})
-
+    return res
+      .status(200)
+      .clearCookie("accessToken", options)
+      .clearCookie("refreshToken", options)
+      .json({ data: "Logout succesfully" });
   } catch (error) {
     res.status(500).send("" + error);
   }
 };
 
-const refreshAccessToken = async (req,res)=>{
-  const incomingRefreshToken = req.cookies.refreshToken
-  if(!incomingRefreshToken){
-    throw new Error("Invalid Token")
+const refreshAccessToken = async (req, res) => {
+  const incomingRefreshToken = req.cookies.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new Error("Invalid Token");
   }
 
   try {
-    
-    const payload = jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
-    if(!payload){
-      throw new Error("Invalid Refresh Token")
+    const payload = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    if (!payload) {
+      throw new Error("Invalid Refresh Token");
     }
 
-    const user = await User.findById(payload._id)
-    if(!user){
-      throw new Error("Invalid Refresh Token")
+    const user = await User.findById(payload._id);
+    if (!user) {
+      throw new Error("Invalid Refresh Token");
     }
 
-    if(user.refreshToken.toString() !== incomingRefreshToken.toString()){
-      throw new Error('Refresh token is expired or used')
+    if (user.refreshToken.toString() !== incomingRefreshToken.toString()) {
+      throw new Error("Refresh token is expired or used");
     }
 
-    const {accessToken,refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+    const { accessToken, refreshToken } =
+      await generateAccessTokenAndRefreshToken(user._id);
 
     const options = {
-      httpOnly:true,
-      secure:true
-    }
+      httpOnly: true,
+      secure: true,
+    };
 
-    res.status(200).cookie('accessToken',accessToken,options).cookie('refreshToken',refreshToken,options).json({
-      data:"Access Token refreshed"
-    })
-
+    res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json({
+        data: "Access Token refreshed",
+      });
   } catch (error) {
     res.status(500).send("" + error);
   }
-}
+};
 
-const changeCurrentPassword = async(req,res)=>{
+const changeCurrentPassword = async (req, res) => {
   try {
+    const { oldPassword, newPassword } = req.body;
 
-    const {oldPassword,newPassword} = req.body
-
-    if(!(oldPassword && newPassword)){
-      throw new Error("Both fields are required")
+    if (!(oldPassword && newPassword)) {
+      throw new Error("Both fields are required");
     }
 
     const user = await User.findById(req.user._id);
-    if(!user){
-      throw new Error("User does not exist")
+    if (!user) {
+      throw new Error("User does not exist");
     }
 
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
-    if(!isPasswordCorrect){
-      throw new Error("Wrong Old Password")
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if (!isPasswordCorrect) {
+      throw new Error("Wrong Old Password");
     }
 
-    user.password = newPassword
-    await user.save({validateBeforeSave:false})
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
 
     res.status(200).json({
-      data:"password change successfully"
-    })
-
+      data: "password change successfully",
+    });
   } catch (error) {
-    res.status(500).send(""+error)
+    res.status(500).send("" + error);
   }
-}
+};
 
-const getUser = async(req,res)=>{
+const getUser = async (req, res) => {
   try {
-
-    const user = await User.findById(req.user._id).select('-password -refreshToken');
+    const user = await User.findById(req.user._id).select(
+      "-password -refreshToken"
+    );
 
     res.status(200).json({
-      data:user
-    })
+      data: user,
+    });
   } catch (error) {
-    res.status(500).send(""+error)
+    res.status(500).send("" + error);
   }
-}
+};
 
-const updateAccountDetails = async(req,res)=>{
+const updateAccountDetails = async (req, res) => {
   try {
-
-    const { fullName,userName } = req.body 
-    if(!(fullName && userName)){
-      throw new Error('Field are required')
+    const { fullName, userName } = req.body;
+    if (!(fullName && userName)) {
+      throw new Error("Field are required");
     }
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
       {
-        $set:{
+        $set: {
           fullName,
-          userName
-        }
+          userName,
+        },
       },
-      {new:true}
-    ).select("-password -refreshToken")
+      { new: true }
+    ).select("-password -refreshToken");
 
     res.status(200).json({
-      data:user
-    })
-
+      data: user,
+    });
   } catch (error) {
-    res.status(200).send(''+error)
+    res.status(200).send("" + error);
   }
-}
+};
 
-const updateUserAvatar = async(req,res)=>{
+const updateUserAvatar = async (req, res) => {
   try {
     const avatarLocalPath = req.file?.path;
-    if(!avatarLocalPath){
-      throw new Error("Avatar file is missing")
+    if (!avatarLocalPath) {
+      throw new Error("Avatar file is missing");
     }
 
     const deletedImageFormCloudinary = req.user?.avatar;
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
-    if(!avatar.url){
-      throw new Error('Error Occured While Uploading Avatar')
+    if (!avatar.url) {
+      throw new Error("Error Occured While Uploading Avatar");
     }
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
       {
-        $set:{
-          avatar:avatar.url
-        }
+        $set: {
+          avatar: avatar.url,
+        },
       },
-      {new:true}
-    ).select('-password -refreshToken')
+      { new: true }
+    ).select("-password -refreshToken");
 
     await deleteFromCloudinary(deletedImageFormCloudinary);
 
     res.status(200).json({
-      data:user
-    })
-
+      data: user,
+    });
   } catch (error) {
-    res.status(500).send(''+error)
+    res.status(500).send("" + error);
   }
-}
+};
 
-const updateUserCoverImage = async (req,res)=>{
+const updateUserCoverImage = async (req, res) => {
   try {
-    const coverImageLocalPath = req.file.path
-    if(!coverImageLocalPath){
-      throw new Error("CoverImage file is missing")
+    const coverImageLocalPath = req.file.path;
+    if (!coverImageLocalPath) {
+      throw new Error("CoverImage file is missing");
     }
 
-    const deletedImageFormCloudinary = req.user?.coverImage
-    
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
-    if(!coverImage.url){
-      throw new Error("Error Occured While Uploading Cover Image")
+    const deletedImageFormCloudinary = req.user?.coverImage;
+
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage.url) {
+      throw new Error("Error Occured While Uploading Cover Image");
     }
-    
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
       {
-        $set:{
-          coverImage:coverImage.url
-        }
+        $set: {
+          coverImage: coverImage.url,
+        },
       },
-      {new:true}
-    ).select('-password -refreshToken')
+      { new: true }
+    ).select("-password -refreshToken");
 
     await deleteFromCloudinary(deletedImageFormCloudinary);
     res.status(200).send({
-      data:user
-    })
-
+      data: user,
+    });
   } catch (error) {
-    res.status(500).send(""+error)
+    res.status(500).send("" + error);
   }
-}
+};
 
 const userChannelProfile = async (req, res) => {
   try {
     const { userId } = req.params;
 
     if (!userId) {
-      throw new Error("userId is missing")
+      throw new Error("userId is missing");
     }
 
     const isOwner = req.user?._id.toString() === userId;
@@ -339,24 +356,24 @@ const userChannelProfile = async (req, res) => {
     const channel = await User.aggregate([
       {
         $match: {
-          _id: new mongoose.Types.ObjectId(userId)
-        }
+          _id: new mongoose.Types.ObjectId(userId),
+        },
       },
       {
         $lookup: {
           from: "subscriptions",
           localField: "_id",
           foreignField: "channel",
-          as: "subscribers"
-        }
+          as: "subscribers",
+        },
       },
       {
         $lookup: {
-          from: 'subscriptions',
+          from: "subscriptions",
           localField: "_id",
           foreignField: "subscriber",
-          as: "subscribedTo"
-        }
+          as: "subscribedTo",
+        },
       },
       {
         $lookup: {
@@ -370,15 +387,15 @@ const userChannelProfile = async (req, res) => {
                 $expr: {
                   $or: [
                     { $eq: [isOwner, true] }, // If owner, match all videos
-                    { $eq: ["$isPublished", true] } // If not owner, only published
-                  ]
-                }
-              }
+                    { $eq: ["$isPublished", true] }, // If not owner, only published
+                  ],
+                },
+              },
             },
             {
               $sort: {
-                createdAt: -1
-              }
+                createdAt: -1,
+              },
             },
             {
               $project: {
@@ -390,34 +407,39 @@ const userChannelProfile = async (req, res) => {
                 views: 1,
                 isPublished: 1,
                 createdAt: 1,
-                updatedAt: 1
-              }
-            }
-          ]
-        }
+                updatedAt: 1,
+              },
+            },
+          ],
+        },
       },
       {
         $addFields: {
           subscribersCount: {
-            $size: "$subscribers"
+            $size: "$subscribers",
           },
           channelsSubscribedToCount: {
-            $size: "$subscribedTo"
+            $size: "$subscribedTo",
           },
           isSubscribed: {
             $cond: {
-              if: { $in: [new mongoose.Types.ObjectId(req.user?._id), "$subscribers.subscriber"] },
+              if: {
+                $in: [
+                  new mongoose.Types.ObjectId(req.user?._id),
+                  "$subscribers.subscriber",
+                ],
+              },
               then: true,
-              else: false
-            }
+              else: false,
+            },
           },
           videosCount: {
-            $size: "$videos"
+            $size: "$videos",
           },
           totalViews: {
-            $sum: "$videos.views"
-          }
-        }
+            $sum: "$videos.views",
+          },
+        },
       },
       {
         $project: {
@@ -432,76 +454,85 @@ const userChannelProfile = async (req, res) => {
           videos: 1,
           videosCount: 1,
           totalViews: 1,
-          createdAt: 1
-        }
-      }
-    ])
+          createdAt: 1,
+        },
+      },
+    ]);
 
     if (!channel.length) {
-      throw new Error("channel does not exists")
+      throw new Error("channel does not exists");
     }
 
     res.status(200).json({
-      data: channel[0]
-    })
-
+      data: channel[0],
+    });
   } catch (error) {
-    res.status(500).send("" + error)
+    res.status(500).send("" + error);
   }
-}
+};
 
-const getWatchHistory = async (req,res)=>{
+const getWatchHistory = async (req, res) => {
   try {
-    
     const user = await User.aggregate([
       {
-        $match:{
-          _id: new mongoose.Types.ObjectId(req.user._id)
-        }
+        $match: {
+          _id: new mongoose.Types.ObjectId(req.user._id),
+        },
       },
       {
-        $lookup:{
-          from:"videos",
-          localField:"watchHistory",
-          foreignField:"_id",
-          as:"watchHistory",
-          pipeline:[
+        $lookup: {
+          from: "videos",
+          localField: "watchHistory",
+          foreignField: "_id",
+          as: "watchHistory",
+          pipeline: [
             {
-              $lookup:{
-                from:"users",
-                localField:"owner",
-                foreignField:"_id",
-                as:"owner",
-                pipeline:[
+              $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
                   {
-                    $project:{
-                      fullName:1,
-                      userName:1,
-                      avatar:1
-                    }
-                  }
-                ]
-              }
+                    $project: {
+                      fullName: 1,
+                      userName: 1,
+                      avatar: 1,
+                    },
+                  },
+                ],
+              },
             },
             {
-              $addFields:{
-                owner:{
-                  $first:"$owner"
-                }
-              }
-            }
-          ]
-        }
-      }
-    ])
+              $addFields: {
+                owner: {
+                  $first: "$owner",
+                },
+              },
+            },
+          ],
+        },
+      },
+    ]);
 
     res.status(200).json({
-      data:user[0].watchHistory
-    })
-
+      data: user[0].watchHistory,
+    });
   } catch (error) {
-    res.status(500).send(""+error)
+    res.status(500).send("" + error);
   }
-}
+};
 
-module.exports = { register, login, logout, refreshAccessToken, changeCurrentPassword, getUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, userChannelProfile,getWatchHistory };
+module.exports = {
+  register,
+  login,
+  logout,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+  userChannelProfile,
+  getWatchHistory,
+};
